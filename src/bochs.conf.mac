@@ -1,12 +1,12 @@
 # ROM and VGA BIOS images ---------------------------------------------
  
-romimage:    file="/usr/share/bochs/BIOS-bochs-latest"
-vgaromimage: file="/usr/share/bochs/VGABIOS-lgpl-latest"
+romimage:    file="/usr/local/Cellar/bochs/2.6.11/share/bochs/BIOS-bochs-latest"
+vgaromimage: file="/usr/local/Cellar/bochs/2.6.11/share/bochs/VGABIOS-lgpl-latest"
 
  
 # boot from floppy using our disk image -------------------------------
  
-floppya: image=floppy-demo.img, status=inserted  # Boot from drive A
+floppya: image=devOS.img, status=inserted  # Boot from drive A
  
 # logging and reporting -----------------------------------------------
  
