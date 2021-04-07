@@ -13,12 +13,13 @@ jmp	main				; go to start
  
 %include "stdio.inc"			; basic i/o routines
 %include "Gdt.inc"				; Gdt routines
+%include "A20.inc"
  
 ;*******************************************************
 ;	Data Section
 ;*******************************************************
  
-LoadingMsg db "Preparing to load operating system...", 0x0D, 0x0A, 0x00
+LoadingMsg db "Preparing to load devOS...", 0x0D, 0x0A, 0x00
  
 ;*******************************************************
 ;	STAGE 2 ENTRY POINT
@@ -57,6 +58,12 @@ main:
  
 	call	InstallGDT		; install our GDT
  
+	;-------------------------------;
+	;   Enable A20			;
+	;-------------------------------;
+
+	call	EnableA20_KKbrd_Out
+
 	;-------------------------------;
 	;   Go into pmode		;
 	;-------------------------------;
