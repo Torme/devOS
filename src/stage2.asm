@@ -20,7 +20,11 @@ jmp	main				; go to start
 ;*******************************************************
  
 LoadingMsg db "Preparing to load devOS...", 0x0D, 0x0A, 0x00
- 
+WelcomeSpacing db 0x0A, 0x0A, 0x0A, 0x00
+WelcomeTitle db  "-- ( dev OS v0.0.1 ) --", 0x0A, 0x00
+WelcomeSubtitle db  "Think Better - Code Harder - Build Stronger", 0x0A, 0x00
+
+
 ;*******************************************************
 ;	STAGE 2 ENTRY POINT
 ;
@@ -68,12 +72,14 @@ main:
 	;   Go into pmode		;
 	;-------------------------------;
  
+EnterStage3:
+
 	cli					; clear interrupts
 	mov	eax, cr0		; set bit 0 in cr0--enter pmode
 	or	eax, 1
 	mov	cr0, eax
  
-	jmp	08h:Stage3		; far jump to fix CS. Remember that the code selector is 0x8!
+	jmp	CODE_DESC:Stage3		; far jump to fix CS. Remember that the code selector is 0x8!
  
 	; Note: Do NOT re-enable interrupts! Doing so will triple fault!
 	; We will fix this in Stage 3.
@@ -95,7 +101,17 @@ Stage3:
 	mov		ss, ax
 	mov		es, ax
 	mov		esp, 90000h		; stack begins from 90000h
- 
+
+	call	ClrScr32
+	mov 	ebx, WelcomeSpacing
+	call 	Puts32
+	mov 	ebx, WelcomeTitle
+	call  Ctrs32
+	mov 	bl, 0x0A
+	call 	Putch32
+	mov 	ebx, WelcomeSubtitle
+	call 	Ctrs32
+
 ;*******************************************************
 ;	Stop execution
 ;*******************************************************
