@@ -7,8 +7,7 @@
 
 #include "DebugDisplay.h"
 
-void _cdecl main () {
-
+int main () {
 	int i=0x12;
 
 	DebugClrScr (0x18);
@@ -32,5 +31,4 @@ void _cdecl main () {
 	DebugGotoXY (4,16);
 	DebugSetColor (0x1F);
 	DebugPrintf ("\n\nI am preparing to load... Hold on, please... :)");
-
 }

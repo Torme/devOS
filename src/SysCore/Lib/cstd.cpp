@@ -1,13 +1,6 @@
 
-//! MSVC++ C++ runtime
-
-// Very MSVC++ dependent. Will try to support different compiliers later.
-#ifndef _MSC_VER
-#error "MOS2 Kernel C++ Runtime requires Microsoft Visual C++ 2005 or later."
-#endif
-
 //! Function pointer typedef for less typing
-typedef void (__cdecl *_PVFV)(void);
+typedef void (* _PVFV)(void);
 
 //! __xc_a points to beginning of initializer table
 #pragma data_seg(".CRT$XCA")
@@ -45,7 +38,7 @@ static unsigned cur_atexitlist_entries = 0;
 */
 
 //! initialize all global initializers (ctors, statics, globals, etc..)
-void __cdecl _initterm ( _PVFV * pfbegin, _PVFV * pfend ) {
+void _initterm ( _PVFV * pfbegin, _PVFV * pfend ) {
 
 	//! Go through each initializer
     while ( pfbegin < pfend )
@@ -60,7 +53,7 @@ void __cdecl _initterm ( _PVFV * pfbegin, _PVFV * pfend ) {
 }
 
 //! initialize the de-initializer function table
-void __cdecl _atexit_init(void) {
+void _atexit_init(void) {
 
     max_atexitlist_entries = 32;
 
@@ -70,7 +63,7 @@ void __cdecl _atexit_init(void) {
 }
 
 //! adds a new function entry that is to be called at shutdown
-int __cdecl atexit(_PVFV fn) {
+int atexit(_PVFV fn) {
 
 	//! Insure we have enough free space
 	if (cur_atexitlist_entries>=max_atexitlist_entries)
@@ -85,7 +78,7 @@ int __cdecl atexit(_PVFV fn) {
 }
 
 //! shutdown the C++ runtime; calls all global de-initializers
-void _cdecl Exit () {
+void Exit () {
 
 	//! Go through the list, and execute all global exit routines
 	while (cur_atexitlist_entries--) {
@@ -96,7 +89,7 @@ void _cdecl Exit () {
 }
 
 //! execute all constructors and other dynamic initializers
-void _cdecl InitializeConstructors() {
+void InitializeConstructors() {
 
    _atexit_init();
    _initterm(__xc_a, __xc_z); 
@@ -106,34 +99,34 @@ void _cdecl InitializeConstructors() {
 #pragma warning (disable:4100)
 
 //! purecall function handler
-int __cdecl ::_purecall() { for (;;); return 0; }
+int ::_purecall() { for (;;); return 0; }
 
 //! global new and delete operators
-void* __cdecl ::operator new (unsigned int size) { return 0; }
-void* __cdecl operator new[] (unsigned int size) { return 0; }
-void __cdecl ::operator delete (void * p) {}
-void __cdecl operator delete[] (void * p) { }
+void* ::operator new (unsigned int size) { return 0; }
+void* operator new[] (unsigned int size) { return 0; }
+void ::operator delete (void * p) {}
+void operator delete[] (void * p) { }
 
-extern "C" float __declspec(naked) _CIcos() {
+extern "C" float _CIcos() {
 #ifdef ARCH_X86
    _asm fcos
 #endif
 };
 
-extern "C" float __declspec(naked) _CIsin() {
+extern "C" float _CIsin() {
 #ifdef ARCH_X86
    _asm fsin
 #endif
 };
 
-extern "C" float __declspec(naked) _CIsqrt() {
+extern "C" float _CIsqrt() {
 #ifdef ARCH_X86
    _asm fsqrt
 #endif
 };
 
 //! called by MSVC++ to convert a float to a long
-extern "C" long __declspec (naked) _ftol2_sse() {
+extern "C" long _ftol2_sse() {
 	int a;
 #ifdef ARCH_X86
 	_asm {
