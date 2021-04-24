@@ -17,7 +17,7 @@ jmp	Stage3				; jump to entry point
 
 WelcomeSpacing db 0x0A, 0x0A, 0x0A, 0x00
 WelcomeTitle db  "-- ( dev OS v0.0.1 ) --", 0x0A, 0x00
-WelcomeSubtitle db  "Think Better - Code Harder - Build Stronger", 0x0A, 0x00
+WelcomeSubtitle db  "Think Harder - Code Better - Build Faster - Be Stronger", 0x0A, 0x00
 
 Stage3:
 
