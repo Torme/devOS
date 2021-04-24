@@ -3,18 +3,18 @@
 typedef void (* _PVFV)(void);
 
 //! __xc_a points to beginning of initializer table
-#pragma data_seg(".CRT$XCA")
+// #pragma data_seg(".CRT$XCA")
 _PVFV __xc_a[] = { 0 };
 
 //! __xc_z points to end of initializer table
-#pragma data_seg(".CRT$XCZ")
+// #pragma data_seg(".CRT$XCZ")
 _PVFV __xc_z[] = { 0 };
 
 //! Select the default data segment again (.data) for the rest of the unit
-#pragma data_seg()
+// #pragma data_seg()
 
 //! Now, move the CRT data into .data section so we can read/write to it
-#pragma comment(linker, "/merge:.CRT=.data")
+// #pragma comment(linker, "/merge:.CRT=.data")
 
 /*
 ===========================
@@ -96,15 +96,15 @@ void InitializeConstructors() {
 }
 
 // Disable C4100 ('Unused Parameter') warning for now, 'til we could get these written
-#pragma warning (disable:4100)
+// #pragma warning (disable:4100)
 
 //! purecall function handler
-int ::_purecall() { for (;;); return 0; }
+int _purecall() { for(;;) {}; return 0; }
 
 //! global new and delete operators
-void* ::operator new (unsigned int size) { return 0; }
-void* operator new[] (unsigned int size) { return 0; }
-void ::operator delete (void * p) {}
+void* operator new (unsigned long size) { return 0; }
+void* operator new[] (unsigned long size) { return 0; }
+void operator delete (void * p) {}
 void operator delete[] (void * p) { }
 
 extern "C" float _CIcos() {
@@ -140,4 +140,4 @@ extern "C" long _ftol2_sse() {
 extern "C" int _fltused = 1;
 
 //! enable warning
-#pragma warning (default:4100)
+// #pragma warning (default:4100)

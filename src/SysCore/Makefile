@@ -10,12 +10,12 @@ AR					= ar rc
 
 NAME 				= devOS
 
-NAME_LIB		= lib.a
+NAME_LIB		= libdevOS.a
 
-CXXFLAGS		+= -Wextra -Werror -Wall
+# CXXFLAGS		+= -Wextra -Werror -Wall
 CXXFLAGS		+= -IInclude
 
-LIB 				= -llib \
+LIB 				= -ldevOS \
 							-L.
 
 SRC 				= ${FILE_PATH}/main.cpp \
