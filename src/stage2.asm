@@ -14,16 +14,15 @@ jmp	main				; go to start
 %include "stdio.inc"			; basic i/o routines
 %include "Gdt.inc"				; Gdt routines
 %include "A20.inc"
- 
+%include "Fat12.inc"			; FAT12 driver. Kinda
+%include "common.inc"
+
 ;*******************************************************
 ;	Data Section
 ;*******************************************************
  
 LoadingMsg db "Preparing to load devOS...", 0x0D, 0x0A, 0x00
-WelcomeSpacing db 0x0A, 0x0A, 0x0A, 0x00
-WelcomeTitle db  "-- ( dev OS v0.0.1 ) --", 0x0A, 0x00
-WelcomeSubtitle db  "Think Better - Code Harder - Build Stronger", 0x0A, 0x00
-
+msgFailure db 0x0D, 0x0A, "*** FATAL: MISSING OR CURRUPT KRNL.SYS. Press Any Key to Reboot", 0x0D, 0x0A, 0x0A, 0x00
 
 ;*******************************************************
 ;	STAGE 2 ENTRY POINT
@@ -48,14 +47,14 @@ main:
 	mov	ss, ax
 	mov	sp, 0xFFFF
 	sti					; enable interrupts
-	
-	;-------------------------------;
+ 
+ 	;-------------------------------;
 	;   Print loading message	;
 	;-------------------------------;
- 
+
 	mov	si, LoadingMsg
 	call	Puts16
- 
+
 	;-------------------------------;
 	;   Install our GDT		;
 	;-------------------------------;
@@ -67,6 +66,31 @@ main:
 	;-------------------------------;
 
 	call	EnableA20_KKbrd_Out
+
+	;-------------------------------;
+	; Initialize filesystem		;
+	;-------------------------------;
+
+	call	LoadRoot		; Load root directory table
+
+	;-------------------------------;
+	; Load Kernel			;
+	;-------------------------------;
+
+	mov		ebx, 0									; BX:BP points to buffer to load to
+	mov		bp, IMAGE_RMODE_BASE
+	mov		si, ImageName						; our file to load
+	call	LoadFile								; load our file
+	mov		dword [ImageSize], ecx	; save size of kernel
+	cmp		ax, 0										; Test for success
+	je		EnterStage3							; yep--onto Stage 3!
+	mov		si, msgFailure					; Nope--print error
+	call	Puts16
+	mov		ah, 0
+	int   0x16                    ; await keypress
+	int   0x19                    ; warm boot computer
+	cli														; If we get here, something really went wong
+	hlt
 
 	;-------------------------------;
 	;   Go into pmode		;
@@ -102,21 +126,33 @@ Stage3:
 	mov		es, ax
 	mov		esp, 90000h		; stack begins from 90000h
 
-	call	ClrScr32
-	mov 	ebx, WelcomeSpacing
-	call 	Puts32
-	mov 	ebx, WelcomeTitle
-	call  Ctrs32
-	mov 	bl, 0x0A
-	call 	Putch32
-	mov 	ebx, WelcomeSubtitle
-	call 	Ctrs32
+	;-------------------------------;
+	; Copy kernel to 1MB		;
+	;-------------------------------;
+
+CopyImage:
+	mov		eax, dword [ImageSize]
+	movzx	ebx, word [bpbBytesPerSector]
+	mul		ebx
+	mov		ebx, 4
+	div		ebx
+	cld
+	mov   esi, IMAGE_RMODE_BASE
+	mov		edi, IMAGE_PMODE_BASE
+	mov		ecx, eax
+	rep		movsd                   ; copy image to its protected mode address
+
+	;---------------------------------------;
+	;   Execute Kernel			;
+	;---------------------------------------;
+
+	jmp	CODE_DESC:IMAGE_PMODE_BASE; jump to our kernel! Note: This assumes Kernel's entry point is at 1 MB
 
 ;*******************************************************
 ;	Stop execution
 ;*******************************************************
  
 STOP:
- 
+
 	cli
 	hlt
