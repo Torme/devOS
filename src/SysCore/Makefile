@@ -41,6 +41,7 @@ ${NAME}.debug:
 
 clean:
 	${RM} ${OBJ}
+	${RM} ${OBJ_LIB}
 
 fclean: clean
 	${RM} ${NAME} ${NAME}.debug ${NAME_LIB}
