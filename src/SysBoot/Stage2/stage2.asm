@@ -16,13 +16,15 @@ jmp	main				; go to start
 %include "A20.inc"
 %include "Fat12.inc"			; FAT12 driver. Kinda
 %include "common.inc"
+%include "LongMode.inc"
+%include "Gdt64.inc"
 
 ;*******************************************************
 ;	Data Section
 ;*******************************************************
  
 LoadingMsg db "Preparing to load devOS...", 0x0D, 0x0A, 0x00
-msgFailure db 0x0D, 0x0A, "*** FATAL: MISSING OR CURRUPT KRNL.SYS. Press Any Key to Reboot", 0x0D, 0x0A, 0x0A, 0x00
+msgFailure db 0x0D, 0x0A, "*** FATAL: MISSING OR CURRUPT DEVOS FILE. Press Any Key to Reboot", 0x0D, 0x0A, 0x0A, 0x00
 
 ;*******************************************************
 ;	STAGE 2 ENTRY POINT
@@ -102,16 +104,16 @@ EnterStage3:
 	mov	eax, cr0		; set bit 0 in cr0--enter pmode
 	or	eax, 1
 	mov	cr0, eax
- 
+
 	jmp	CODE_DESC:Stage3		; far jump to fix CS. Remember that the code selector is 0x8!
- 
+
 	; Note: Do NOT re-enable interrupts! Doing so will triple fault!
 	; We will fix this in Stage 3.
- 
+
 ;******************************************************
 ;	ENTRY POINT FOR STAGE 3
 ;******************************************************
- 
+
 bits 32					; Welcome to the 32 bit world!
 
 BadImage db "*** FATAL: Invalid or corrupt kernel image. Halting system.", 0
@@ -129,51 +131,79 @@ Stage3:
 	mov		esp, 90000h		; stack begins from 90000h
 
 	;-------------------------------;
-	; Copy kernel to 1MB		;
+	; Go into Long Mode     ;
 	;-------------------------------;
 
-CopyImage:
-	mov		eax, dword [ImageSize]
-	movzx	ebx, word [bpbBytesPerSector]
-	mul		ebx
-	mov		ebx, 4
-	div		ebx
-	cld
-	mov   esi, IMAGE_RMODE_BASE
-	mov		edi, IMAGE_PMODE_BASE
-	mov		ecx, eax
-	rep		movsd                   ; copy image to its protected mode address
+	call SetUpLongMode
+	call InstallGDT64
 
-TestImage:
-  	  mov    ebx, [IMAGE_PMODE_BASE+60]
-  	  add    ebx, IMAGE_PMODE_BASE    ; ebx now points to file sig (.ELF)
-  	  mov    esi, ebx
-  	  mov    edi, ImageSig
-  	  cmpsw
-  	  je     EXECUTE
-  	  mov	ebx, BadImage
-  	  call	Puts32
-  	  cli
-  	  hlt
+bits 64					; Welcome to the fucking 64 bit world!
+ 
+Realm64:
+    cli                           ; Clear the interrupt flag.
+    mov ax, GDT64.Data            ; Set the A-register to the data descriptor.
+    mov ds, ax                    ; Set the data segment to the A-register.
+    mov es, ax                    ; Set the extra segment to the A-register.
+    mov fs, ax                    ; Set the F-segment to the A-register.
+    mov gs, ax                    ; Set the G-segment to the A-register.
+    mov ss, ax                    ; Set the stack segment to the A-register.
+    mov edi, 0xB8000              ; Set the destination index to 0xB8000.
+    mov rax, 0x1F201F201F201F20   ; Set the A-register to 0x1F201F201F201F20.
+    mov ecx, 500                  ; Set the C-register to 500.
+    rep stosq                     ; Clear the screen.
+    ; hlt                           ; Halt the processor.
 
-ImageSig db '.ELF'
+; 	;-------------------------------;
+; 	; Copy kernel to 1MB		;
+; 	;-------------------------------;
 
-	;---------------------------------------;
-	;   Execute Kernel			;
-	;---------------------------------------;
-EXECUTE:
-    ; parse the programs header info structures to get its entry point
+; CopyImage:
+; 	mov		eax, dword [ImageSize]
+; 	movzx	ebx, word [bpbBytesPerSector]
+; 	mul		ebx
+; 	mov		ebx, 4
+; 	div		ebx
+; 	cld
+; 	mov   esi, IMAGE_RMODE_BASE
+; 	mov		edi, IMAGE_PMODE_BASE
+; 	mov		ecx, eax
+; 	rep		movsd                   ; copy image to its protected mode address
 
-	add		ebx, 24
-	mov		eax, [ebx]			; _IMAGE_FILE_HEADER is 20 bytes + size of sig (4 bytes)
-	add		ebx, 20-4			; address of entry point
-	mov		ebp, dword [ebx]		; get entry point offset in code section	
-	add		ebx, 12				; image base is offset 8 bytes from entry point
-	mov		eax, dword [ebx]		; add image base
-	add		ebp, eax
-	cli
+; TestImage:
+;   	  mov    ebx, [IMAGE_PMODE_BASE+60]
+;   	  add    ebx, IMAGE_PMODE_BASE    ; ebx now points to file sig (0x7f ELF)
+; 			cmp		 byte [ebx], 0x7f
+; 			jne 	 Failure
+; 			cmp 	 byte [ebx+1], 'E'
+; 			jne 	 Failure
+;   	  mov    esi, ebx
+;   	  mov    edi, ImageSig
+;   	  cmpsw
+;   	  je     EXECUTE
+; Failure:
+;   	  mov	ebx, BadImage
+;   	  call	Puts32
+;   	  cli
+;   	  hlt
 
-	call	ebp               	      ; Execute Kernel
+; ImageSig db 0x7f, 'ELF'
+
+; 	;---------------------------------------;
+; 	;   Execute Kernel											;
+; 	;---------------------------------------;
+; EXECUTE:
+;     ; parse the programs header info structures to get its entry point
+
+; 	add		ebx, 24
+; 	mov		eax, [ebx]					; _IMAGE_FILE_HEADER is 20 bytes + size of sig (4 bytes)
+; 	add		ebx, 20-4						; address of entry point
+; 	mov		ebp, dword [ebx]		; get entry point offset in code section
+; 	add		ebx, 12							; image base is offset 8 bytes from entry point
+; 	mov		eax, dword [ebx]		; add image base
+; 	add		ebp, eax
+; 	cli
+
+; 	call	ebp               	      ; Execute Kernel
 
 ;*******************************************************
 ;	Stop execution
