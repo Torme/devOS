@@ -16,8 +16,8 @@ bits	32
 
 InstallGDT64:
   lgdt [GDT64.Pointer]         ; Load the 64-bit global descriptor table.
-  jmp GDT64.Code:Realm64       ; Set the code segment and enter 64-bit long mode.
-  
+  ret
+
 ;*******************************************
 ; Global Descriptor Table (GDT 64)
 ;*******************************************
@@ -52,4 +52,4 @@ GDT64:                           ; Global Descriptor Table (64-bit).
     dw $ - GDT64 - 1             ; Limit.
     dq GDT64                     ; Base.
 
-%endif
+%endif ;__GDT_64_INC_INCLUDED__

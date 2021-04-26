@@ -15,7 +15,7 @@ int main () {
 	DebugGotoXY (4,4);
 	DebugSetColor (0x17);
 	DebugPrintf ("+-----------------------------------------+\n");
-	DebugPrintf ("|    MOS 32 Bit C++ Kernel Executing!     |\n");
+	DebugPrintf ("|    MOS 64 Bit C++ Kernel Executing!     |\n");
 	DebugPrintf ("+-----------------------------------------+\n\n");
 	DebugSetColor (0x12);
 

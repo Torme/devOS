@@ -16,7 +16,7 @@ bits	16
 ;*******************************************
  
 InstallGDT:
- 
+
 	cli				    ; clear interrupts
 	pusha				; save registers
 	lgdt 	[toc]		; load GDT into GDTR

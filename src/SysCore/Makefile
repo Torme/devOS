@@ -8,7 +8,7 @@ RM					= rm -f
 
 AR					= ar rc
 
-NAME 				= devOS
+NAME 				= devOS.elf
 
 NAME_LIB		= libdevOS.a
 

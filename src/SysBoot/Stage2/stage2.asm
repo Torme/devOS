@@ -16,8 +16,6 @@ jmp	main				; go to start
 %include "A20.inc"
 %include "Fat12.inc"			; FAT12 driver. Kinda
 %include "common.inc"
-%include "LongMode.inc"
-%include "Gdt64.inc"
 
 ;*******************************************************
 ;	Data Section
@@ -98,7 +96,7 @@ main:
 	;   Go into pmode		;
 	;-------------------------------;
  
-EnterStage3:
+EnterStage3:  ; breakpoint: 0x914
 
 	cli					; clear interrupts
 	mov	eax, cr0		; set bit 0 in cr0--enter pmode
@@ -116,12 +114,16 @@ EnterStage3:
 
 bits 32					; Welcome to the 32 bit world!
 
+%include "LongMode.inc"
+%include "Gdt64.inc"
+
 BadImage db "*** FATAL: Invalid or corrupt kernel image. Halting system.", 0
- 
+GoodImage db "*** SUCCESS: Yepe! We found the file.", 0
+
 Stage3:
  
 	;-------------------------------;
-	;   Set registers		;
+	;   Set registers		; breakpoint: 0xadc
 	;-------------------------------;
  
 	mov		ax, 0x10		; set data segments to data selector (0x10)
@@ -131,15 +133,61 @@ Stage3:
 	mov		esp, 90000h		; stack begins from 90000h
 
 	;-------------------------------;
+	; Copy kernel to 1MB		;
+	;-------------------------------;
+
+CopyImage:
+	mov		eax, dword [ImageSize]
+	movzx	ebx, word [bpbBytesPerSector]
+	mul		ebx
+	mov		ebx, 4
+	div		ebx
+	cld
+	mov   esi, IMAGE_RMODE_BASE
+	mov		edi, IMAGE_PMODE_BASE
+	mov		ecx, eax
+	rep		movsd                   ; copy image to its protected mode address
+
+TestImage:
+	mov    ebx, [IMAGE_PMODE_BASE+60]
+	add    ebx, IMAGE_PMODE_BASE    ; ebx now points to file sig (0x7f ELF)
+	mov    esi, ebx
+	mov    edi, ImageSig
+	cmpsw
+	je     Success
+
+Failure:
+	mov ebx, BadImage
+	call	Puts32
+	cli
+	hlt
+
+Success:
+	mov ebx, GoodImage
+	call Puts32
+	cli
+	hlt
+
+ImageSig db 0x7f, 'ELF'
+
+	;-------------------------------;
 	; Go into Long Mode     ;
 	;-------------------------------;
 
+EnterStage4:  ; breakpoint: 0xaeb
+
 	call SetUpLongMode
 	call InstallGDT64
+  jmp GDT64.Code:Realm64       ; Set the code segment and enter 64-bit long mode.
+
+
+;******************************************************
+;	ENTRY POINT FOR STAGE 4
+;******************************************************
 
 bits 64					; Welcome to the fucking 64 bit world!
  
-Realm64:
+Realm64: ; breakpoint: 0xafc
     cli                           ; Clear the interrupt flag.
     mov ax, GDT64.Data            ; Set the A-register to the data descriptor.
     mov ds, ax                    ; Set the data segment to the A-register.
@@ -153,44 +201,10 @@ Realm64:
     rep stosq                     ; Clear the screen.
     ; hlt                           ; Halt the processor.
 
-; 	;-------------------------------;
-; 	; Copy kernel to 1MB		;
-; 	;-------------------------------;
+	;---------------------------------------;
+	;   Execute Kernel											;
+	;---------------------------------------;
 
-; CopyImage:
-; 	mov		eax, dword [ImageSize]
-; 	movzx	ebx, word [bpbBytesPerSector]
-; 	mul		ebx
-; 	mov		ebx, 4
-; 	div		ebx
-; 	cld
-; 	mov   esi, IMAGE_RMODE_BASE
-; 	mov		edi, IMAGE_PMODE_BASE
-; 	mov		ecx, eax
-; 	rep		movsd                   ; copy image to its protected mode address
-
-; TestImage:
-;   	  mov    ebx, [IMAGE_PMODE_BASE+60]
-;   	  add    ebx, IMAGE_PMODE_BASE    ; ebx now points to file sig (0x7f ELF)
-; 			cmp		 byte [ebx], 0x7f
-; 			jne 	 Failure
-; 			cmp 	 byte [ebx+1], 'E'
-; 			jne 	 Failure
-;   	  mov    esi, ebx
-;   	  mov    edi, ImageSig
-;   	  cmpsw
-;   	  je     EXECUTE
-; Failure:
-;   	  mov	ebx, BadImage
-;   	  call	Puts32
-;   	  cli
-;   	  hlt
-
-; ImageSig db 0x7f, 'ELF'
-
-; 	;---------------------------------------;
-; 	;   Execute Kernel											;
-; 	;---------------------------------------;
 ; EXECUTE:
 ;     ; parse the programs header info structures to get its entry point
 
